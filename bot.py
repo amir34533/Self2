@@ -7,7 +7,7 @@ from pyrogram import enums
 
 user_temp_codes = {}
 active_clients = {}
-BOT_TOKEN = "8951978268:AAFu_amPN7k8HeqAQlxbO_tY-FTn9updxMg"
+BOT_TOKEN = "8674957786:AAHcKmPkUhR630w5pmkrifnxO9Yf8SCuVm"
 API_ID = 35656061
 API_HASH = "b37f2596516bc0439bf505d1d230395c"
 ADMIN_ID = 7845464086
@@ -54,7 +54,6 @@ class JSONDatabase:
                     "temp_data": {}, 
                     "credits": {}, 
                     "timers": {},
-                    "verifications": {},
                     "payments": {},
                     "settings": {
                         "coin_rate": COIN_RATE,
@@ -67,7 +66,7 @@ class JSONDatabase:
         except Exception as e:
             return {
                 "users": {}, "processes": {}, "temp_data": {}, 
-                "credits": {}, "timers": {}, "verifications": {}, 
+                "credits": {}, "timers": {}, 
                 "payments": {}, "settings": {}
             }
     
@@ -110,13 +109,6 @@ class JSONDatabase:
         except:
             return {}
     
-    def get_pending_verifications(self):
-        try:
-            verifications = self.data.get("verifications", {})
-            return {k: v for k, v in verifications.items() if v.get('status') == 'pending'}
-        except:
-            return {}
-    
     def get_pending_payments(self):
         try:
             payments = self.data.get("payments", {})
@@ -124,19 +116,6 @@ class JSONDatabase:
         except:
             return {}
     
-    def get_verified_users(self):
-        try:
-            users = self.data.get("users", {})
-            return {k: v for k, v in users.items() if v.get('verified')}
-        except:
-            return {}
-    
-    def get_rejected_users(self):
-        try:
-            users = self.data.get("users", {})
-            return {k: v for k, v in users.items() if v.get('rejected')}
-        except:
-            return {}
 
 db = JSONDatabase()
 user_timers = {}
@@ -271,7 +250,6 @@ async def handle_code_from_keyboard(client, code_message):
             "status": "active", 
             "created_at": time.time(),
             "last_active": time.time(),
-            "verified": db.get("users", user_id, {}).get("verified", False)
         }
         db.set("users", user_id, user_info)
         db.delete("temp_data", user_id)
@@ -790,8 +768,6 @@ async def user_info(client, message: Message):
         created = time.ctime(user_data.get('created_at', time.time()))
         running = "🟢 بله" if process else "🔴 خیر"
         has_timer = "🟢 فعال" if timer and timer.get('is_running') else "🔴 غیرفعال"
-        verified_status = "✅ تایید شده" if user_data.get('verified') else "❌ تایید نشده"
-        rejected_status = "❌ رد شده" if user_data.get('rejected') else "✅ فعال"
         
         created_time = user_data.get('created_at', time.time())
         time_diff = time.time() - created_time
@@ -803,8 +779,6 @@ async def user_info(client, message: Message):
 
 📱 **شماره:** `{phone}`
 📊 **وضعیت:** {status}
-🔐 **احراز هویت:** {verified_status}
-🚫 **وضعیت رد:** {rejected_status}
 💰 **سکه ها:** `{credits}`
 🔄 **سلف:** {running}
 📅 **تاریخ ایجاد:** `{created}`
@@ -815,9 +789,7 @@ async def user_info(client, message: Message):
 """
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("🎯 تنظیم سکه", callback_data=f"set_{target_id}"),
-             InlineKeyboardButton("🛑 توقف سلف", callback_data=f"stop_{target_id}")],
-            [InlineKeyboardButton("✅ تایید احراز", callback_data=f"verify_approve_{target_id}"),
-             InlineKeyboardButton("❌ رد احراز", callback_data=f"verify_reject_{target_id}")]
+             InlineKeyboardButton("🛑 توقف سلف", callback_data=f"stop_{target_id}")]
         ])
         
         await message.reply_text(info_text, reply_markup=keyboard)
@@ -830,8 +802,6 @@ async def admin_panel(client, message: Message):
     users = db.data.get("users", {})
     active_count = len(db.data.get("processes", {}))
     total_credits = sum(db.data.get("credits", {}).values())
-    verified_users = len(db.get_verified_users())
-    pending_verifications = len(db.get_pending_verifications())
     pending_payments = len(db.get_pending_payments())
     
     today = time.time() - 86400
@@ -842,12 +812,10 @@ async def admin_panel(client, message: Message):
 
 👥 **کل کاربران:** `{len(users)}`
 🟢 **کاربران فعال:** `{active_count}`
-✅ **کاربران تایید شده:** `{verified_users}`
 🆕 **کاربران امروز:** `{new_today}`
 💰 **مجموع سکه ها:** `{total_credits}`
 
 📋 **درخواست‌های در انتظار:**
-├─ 🔐 احراز هویت: `{pending_verifications}`
 └─ 💰 پرداخت: `{pending_payments}`
 
 **📋 دستورات سریع:**
@@ -861,8 +829,7 @@ async def admin_panel(client, message: Message):
          InlineKeyboardButton("📊 آمار کامل", callback_data="admin_stats")],
         [InlineKeyboardButton("💰 برترین کاربران", callback_data="admin_top"),
          InlineKeyboardButton("🛑 توقف همه", callback_data="admin_stop_all")],
-        [InlineKeyboardButton("🔐 درخواست احراز", callback_data="admin_verifications"),
-         InlineKeyboardButton("💳 درخواست پرداخت", callback_data="admin_payments")]
+        [InlineKeyboardButton("💳 درخواست پرداخت", callback_data="admin_payments")]
     ])
     
     await message.reply_text(stats_text, reply_markup=keyboard)
@@ -966,8 +933,7 @@ async def admin_callback_handler(client, callback_query):
         for i, (uid, info) in enumerate(list(users.items())[:20], 1):
             credits = db.get("credits", int(uid), 0)
             status = "🟢" if info.get('status') == 'active' else "🔴"
-            verified = "✅" if info.get('verified') else "❌"
-            text += f"{i}. {status} {verified} `{uid}` → {credits} سکه\n"
+            text += f"{i}. {status} `{uid}` → {credits} سکه\n"
         
         if len(users) > 20:
             text += f"\n... و {len(users) - 20} کاربر دیگر"
@@ -983,28 +949,20 @@ async def admin_callback_handler(client, callback_query):
         users = db.get_all("users")
         processes = db.get_all("processes")
         credits = db.get_all("credits")
-        verifications = db.get_all("verifications")
         payments = db.get_all("payments")
         
         total_users = len(users)
         active_users = len(processes)
         total_credits = sum(credits.values()) if credits else 0
-        pending_verif = sum(1 for v in verifications.values() if v.get('status') == 'pending')
         pending_pay = sum(1 for p in payments.values() if p.get('status') == 'pending')
-        verified_users = sum(1 for u in users.values() if u.get('verified'))
-        rejected_users = sum(1 for u in users.values() if u.get('rejected'))
         
         text = f"""
 📊 **آمار کامل سیستم**
 
 👥 **کاربران کل:** {total_users}
 🟢 **فعال:** {active_users}
-✅ **تایید شده:** {verified_users}
-❌ **رد شده:** {rejected_users}
-
 💰 **مجموع سکه‌ها:** {total_credits:,}
 
-🔐 **درخواست احراز:** {pending_verif}
 💳 **درخواست پرداخت:** {pending_pay}
 
 📅 **تاریخ:** {time.ctime()}
@@ -1041,27 +999,6 @@ async def admin_callback_handler(client, callback_query):
         stop_all_selfbots()
         await asyncio.sleep(1)
         await callback_query.message.edit_text("✅ **همه سلف‌بات‌ها متوقف شدند.**")
-        await callback_query.answer()
-    
-    # ====== درخواست‌های احراز ======
-    elif data == "admin_verifications":
-        verifications = db.get_pending_verifications()
-        if not verifications:
-            await callback_query.message.edit_text("❌ هیچ درخواست احراز در انتظاری وجود ندارد.")
-            return
-        
-        text = "🔐 **درخواست‌های احراز هویت:**\n\n"
-        for uid, info in list(verifications.items())[:10]:
-            name = info.get('first_name', 'ناشناس')
-            text += f"👤 {name} → `{uid}`\n"
-        
-        if len(verifications) > 10:
-            text += f"\n... و {len(verifications) - 10} درخواست دیگر"
-        
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔙 بازگشت", callback_data="admin_back")]
-        ])
-        await callback_query.message.edit_text(text, reply_markup=keyboard)
         await callback_query.answer()
     
     # ====== درخواست‌های پرداخت ======
@@ -1110,46 +1047,6 @@ async def admin_callback_handler(client, callback_query):
             await callback_query.message.edit_text(f"✅ سلف‌بات کاربر {target_id} متوقف شد.")
         else:
             await callback_query.message.edit_text(f"ℹ️ سلف‌بات کاربر {target_id} از قبل متوقف بود.")
-        await callback_query.answer()
-    
-    # ====== تایید احراز ======
-    elif data.startswith("verify_approve_"):
-        target_id = int(data.split("_")[2])
-        user_data = db.get("users", target_id, {})
-        user_data["verified"] = True
-        user_data["rejected"] = False
-        db.set("users", target_id, user_data)
-        db.delete("verifications", target_id)
-        
-        await callback_query.message.edit_text(f"✅ احراز هویت کاربر {target_id} تایید شد.")
-        try:
-            await bot.send_message(
-                target_id,
-                "✅ **احراز هویت شما تایید شد!**\n\n"
-                "اکنون می‌توانید از بخش «افزایش موجودی» استفاده کنید."
-            )
-        except:
-            pass
-        await callback_query.answer()
-    
-    # ====== رد احراز ======
-    elif data.startswith("verify_reject_"):
-        target_id = int(data.split("_")[2])
-        user_data = db.get("users", target_id, {})
-        user_data["verified"] = False
-        user_data["rejected"] = True
-        db.set("users", target_id, user_data)
-        db.delete("verifications", target_id)
-        
-        await callback_query.message.edit_text(f"❌ احراز هویت کاربر {target_id} رد شد.")
-        try:
-            await bot.send_message(
-                target_id,
-                "❌ **احراز هویت شما رد شد!**\n\n"
-                "لطفا مجدداً با ارسال عکس واضح‌تر اقدام کنید."
-            )
-        except:
-            pass
         await callback_query.answer()
     
     # ====== تایید پرداخت ======
@@ -1244,8 +1141,6 @@ async def user_info(client, message: Message):
         created = time.ctime(user_data.get('created_at', time.time()))
         running = "🟢 بله" if process else "🔴 خیر"
         has_timer = "🟢 فعال" if timer and timer.get('is_running') else "🔴 غیرفعال"
-        verified_status = "✅ تایید شده" if user_data.get('verified') else "❌ تایید نشده"
-        rejected_status = "❌ رد شده" if user_data.get('rejected') else "✅ فعال"
         
         created_time = user_data.get('created_at', time.time())
         time_diff = time.time() - created_time
@@ -1257,8 +1152,6 @@ async def user_info(client, message: Message):
 
 📱 **شماره:** `{phone}`
 📊 **وضعیت:** {status}
-🔐 **احراز هویت:** {verified_status}
-🚫 **وضعیت رد:** {rejected_status}
 💰 **سکه ها:** `{credits}`
 🔄 **سلف:** {running}
 📅 **تاریخ ایجاد:** `{created}`
@@ -1269,9 +1162,7 @@ async def user_info(client, message: Message):
 """
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("🎯 تنظیم سکه", callback_data=f"set_{target_id}"),
-             InlineKeyboardButton("🛑 توقف سلف", callback_data=f"stop_{target_id}")],
-            [InlineKeyboardButton("✅ تایید احراز", callback_data=f"verify_approve_{target_id}"),
-             InlineKeyboardButton("❌ رد احراز", callback_data=f"verify_reject_{target_id}")]
+             InlineKeyboardButton("🛑 توقف سلف", callback_data=f"stop_{target_id}")]
         ])
         
         await message.reply_text(info_text, reply_markup=keyboard)
@@ -1284,8 +1175,6 @@ async def admin_panel(client, message: Message):
     users = db.data.get("users", {})
     active_count = len(db.data.get("processes", {}))
     total_credits = sum(db.data.get("credits", {}).values())
-    verified_users = len(db.get_verified_users())
-    pending_verifications = len(db.get_pending_verifications())
     pending_payments = len(db.get_pending_payments())
     
     today = time.time() - 86400
@@ -1296,12 +1185,10 @@ async def admin_panel(client, message: Message):
 
 👥 **کل کاربران:** `{len(users)}`
 🟢 **کاربران فعال:** `{active_count}`
-✅ **کاربران تایید شده:** `{verified_users}`
 🆕 **کاربران امروز:** `{new_today}`
 💰 **مجموع سکه ها:** `{total_credits}`
 
 📋 **درخواست‌های در انتظار:**
-├─ 🔐 احراز هویت: `{pending_verifications}`
 └─ 💰 پرداخت: `{pending_payments}`
 
 **📋 دستورات سریع:**
@@ -1315,81 +1202,29 @@ async def admin_panel(client, message: Message):
          InlineKeyboardButton("📊 آمار کامل", callback_data="admin_stats")],
         [InlineKeyboardButton("💰 برترین کاربران", callback_data="admin_top"),
          InlineKeyboardButton("🛑 توقف همه", callback_data="admin_stop_all")],
-        [InlineKeyboardButton("🔐 درخواست احراز", callback_data="admin_verifications"),
-         InlineKeyboardButton("💳 درخواست پرداخت", callback_data="admin_payments")]
+        [InlineKeyboardButton("💳 درخواست پرداخت", callback_data="admin_payments")]
     ])
     
     await message.reply_text(stats_text, reply_markup=keyboard)
 def create_main_menu(user_id):
-    """منوی اصلی رنگی با چیدمان مطابق تصویر."""
+    """منوی اصلی رنگی با چیدمان مشابه تصویر Self Francis."""
     return InlineKeyboardMarkup([
-        # ردیف 1: خرید سلف
-        [
-            InlineKeyboardButton(
-                "🛒 خرید سلف",
-                callback_data="increase_balance",
-                style=KeyboardButtonStyle(bg_success=True)
-            )
-        ],
-
-        # ردیف 2: حساب کاربری | دعوت دوستان
-        [
-            InlineKeyboardButton(
-                "👤 حساب کاربری",
-                callback_data="status_credits",
-                style=KeyboardButtonStyle(bg_primary=True)
-            ),
-            InlineKeyboardButton(
-                "👥 دعوت دوستان",
-                callback_data="referral",
-                style=KeyboardButtonStyle(bg_success=True)
-            )
-        ],
-
-        # ردیف 3: مدیریت بات
-        [
-            InlineKeyboardButton(
-                "⚙️ مدیریت بات ⚙️",
-                callback_data="self_management",
-                style=KeyboardButtonStyle(bg_primary=True)
-            )
-        ],
-
-        # ردیف 4: راهنمای خرید
-        [
-            InlineKeyboardButton(
-                "• راهنمای خرید •",
-                callback_data="buy_guide",
-                style=KeyboardButtonStyle(bg_primary=True)
-            )
-        ],
-
-        # ردیف 5: پشتیبانی
-        [
-            InlineKeyboardButton(
-                "👨‍💻 پشتیبانی 👨‍💻",
-                callback_data="support",
-                style=KeyboardButtonStyle(bg_success=True)
-            )
-        ],
-
-        # ردیف 6: چنل ما
-        [
-            InlineKeyboardButton(
-                "📣 چنل ما 📣",
-                callback_data="buy_channel",
-                style=KeyboardButtonStyle(bg_primary=True)
-            )
-        ],
-
-        # ردیف 7: خاموش کردن سلف
-        [
-            InlineKeyboardButton(
-                "🛑 خاموش کردن سلف 🛑",
-                callback_data="stop_self",
-                style=KeyboardButtonStyle(bg_danger=True)
-            )
-        ]
+        [InlineKeyboardButton("🛒 خرید سلف", callback_data="increase_balance",
+                              style=KeyboardButtonStyle(bg_success=True))],
+        [InlineKeyboardButton("👤 حساب کاربری", callback_data="status_credits",
+                              style=KeyboardButtonStyle(bg_primary=True)),
+         InlineKeyboardButton("👥 زیرمجموعه", callback_data="referral",
+                              style=KeyboardButtonStyle(bg_success=True))],
+        [InlineKeyboardButton("⚙️ مدیریت بات ⚙️", callback_data="self_management",
+                              style=KeyboardButtonStyle(bg_primary=True))],
+        [InlineKeyboardButton("• راهنمای خرید •", callback_data="buy_guide",
+                              style=KeyboardButtonStyle(bg_primary=True))],
+        [InlineKeyboardButton("👨‍💻 پشتیبانی 👨‍💻", callback_data="support",
+                              style=KeyboardButtonStyle(bg_success=True))],
+        [InlineKeyboardButton("📣 چنل ما 📣", callback_data="buy_channel",
+                              style=KeyboardButtonStyle(bg_primary=True))],
+        [InlineKeyboardButton("🛑 خاموش کردن سلف 🛑", callback_data="stop_self",
+                              style=KeyboardButtonStyle(bg_danger=True))]
     ])
 
 
@@ -1515,7 +1350,11 @@ async def callback_handler(client, callback_query):
             return
         await cancel_group_bet_handler(client, callback_query)
         return
-    if data.startswith(("admin_", "set_", "stop_", "verify_", "payment_")):
+    is_admin_action = (
+        data.startswith(("admin_", "set_", "payment_"))
+        or (data.startswith("stop_") and data != "stop_self")
+    )
+    if is_admin_action:
         if user_id != ADMIN_ID:
             await callback_query.answer("❌ دسترسی غیرمجاز!", show_alert=True)
             return
@@ -1746,62 +1585,19 @@ async def callback_handler(client, callback_query):
         await callback_query.answer()
     
     elif data == "increase_balance":
-        user_data = db.get("users", user_id, {})
-        
-        if user_data.get('rejected'):
-            await callback_query.answer("❌ حساب شما توسط ادمین رد شده است. امکان افزایش موجودی ندارید.", show_alert=True)
-            return
-        
-        if not user_data.get('verified'):
-            keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("● احراز هویت ●", callback_data="start_verification")],
-                [InlineKeyboardButton("🔙 بازگشت", callback_data="back")]
-            ])
-            
-            await callback_query.message.edit_text(
-                "🔒 **برای افزایش موجودی نیاز به احراز هویت دارید**\n\n"
-                "📋 **مراحل احراز هویت:**\n"
-                "1️⃣ کلیک روی دکمه 'احراز هویت'\n"
-                "2️⃣ ارسال عکس از کارت بانکی\n"
-                "3️⃣ تایید توسط ادمین\n"
-                "4️⃣ افزایش موجودی\n\n"
-                "⚠️ **توجه:** اطلاعات حساس (CVV2، تاریخ انقضا) در عکس پوشیده شود",
-                reply_markup=keyboard
-            )
-            return
-        else:
-            await callback_query.message.edit_text(
-                "💰 **افزایش موجودی**\n\n"
-                f"💎 **نرخ تبدیل:** هر {COIN_RATE} سکه = 50,000 تومان\n"
-                f"💵 **قیمت هر سکه:** {TOMAN_PER_COIN:.0f} تومان\n\n"
-                "🔢 **تعداد سکه مورد نظر خود را وارد کنید:**\n"
-                "مثال: 1440\n\n"
-                "💡 **توجه:** فقط عدد وارد کنید (بدون نقطه یا کاما)",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 بازگشت", callback_data="back")]])
-            )
-            
-            db.delete("temp_data", f"waiting_coins_{user_id}")
-            db.set("temp_data", f"waiting_coins_{user_id}", True)
-            await callback_query.answer("✅ لطفا تعداد سکه مورد نظر را وارد کنید")
-
-    elif data == "start_verification":
-        user_data = db.get("users", user_id, {})
-        if user_data.get('rejected'):
-            await callback_query.answer("❌ حساب شما توسط ادمین رد شده است.", show_alert=True)
-            return
-        
         await callback_query.message.edit_text(
-            "📸 **لطفا عکس کارت بانکی خود را ارسال کنید**\n\n"
-            "⚠️ **قبل از ارسال مطمئن شوید:**\n"
-            "• نام صاحب کارت مشخص باشد\n"
-            "• شماره کارت واضح باشد\n"
-            "• CVV2 ❌ پوشیده شود\n"
-            "• تاریخ انقضا ❌ پوشیده شود\n\n"
-            "📎 یک عکس با کیفیت مناسب ارسال کنید",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 بازگشت", callback_data="increase_balance")]])
+            "💰 **افزایش موجودی**\n\n"
+            f"💎 **نرخ تبدیل:** هر {COIN_RATE} سکه = 50,000 تومان\n"
+            f"💵 **قیمت هر سکه:** {TOMAN_PER_COIN:.0f} تومان\n\n"
+            "🔢 **تعداد سکه مورد نظر خود را وارد کنید:**\n"
+            "مثال: 1440\n\n"
+            "💡 **توجه:** فقط عدد وارد کنید (بدون نقطه یا کاما)",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 بازگشت", callback_data="back")]])
         )
-        db.set("temp_data", f"waiting_card_photo_{user_id}", True)
-   
+        db.delete("temp_data", f"waiting_coins_{user_id}")
+        db.set("temp_data", f"waiting_coins_{user_id}", True)
+        await callback_query.answer("✅ لطفا تعداد سکه مورد نظر را وارد کنید")
+
     elif data == "back":
         if user_id != ADMIN_ID:
             credits = db.get("credits", user_id, 0)
@@ -1809,18 +1605,14 @@ async def callback_handler(client, callback_query):
             
             status_text = "🔴 سلف غیرفعال"
             phone_text = ""
-            verified_status = "❌ احراز نشده"
             
             if user_data and user_data.get('status') == 'active':
                 status_text = f"🟢 سلف فعال"
                 phone_text = f"\n📱 شماره: {user_data.get('phone', '')}"
             
-            if user_data.get('verified'):
-                verified_status = "✅ احراز شده"
-            
             keyboard = create_main_menu(user_id)
             
-            text = f"🤖 **ربات مدیریت سلف بات**\n\n**وضعیت:** {status_text}{phone_text}\n**🔐 احراز:** {verified_status}\n**💰 سکه ها:** `{credits}` سکه\n**⏰ مصرف:** 1 سکه در ساعت"
+            text = f"🤖 **ربات مدیریت سلف بات**\n\n**وضعیت:** {status_text}{phone_text}\n**💰 سکه ها:** `{credits}` سکه\n**⏰ مصرف:** 1 سکه در ساعت"
             
             await callback_query.message.edit_text(text, reply_markup=keyboard)
         else:
@@ -1880,9 +1672,7 @@ async def start_handler(client, message: Message):
             "status": "inactive",
             "created_at": time.time(),
             "first_name": message.from_user.first_name or "",
-            "username": message.from_user.username or "",
-            "verified": False,
-            "rejected": False
+            "username": message.from_user.username or ""
         }
         db.set("users", user_id, user_info)
         is_new_user = True
@@ -1904,7 +1694,6 @@ async def start_handler(client, message: Message):
     user_data = db.get("users", user_id, {})
     status = "🟢 فعال" if user_data.get('status') == 'active' else "🔴 غیرفعال"
     phone = user_data.get('phone', '')
-    verified_status = "✅ احراز شده" if user_data.get('verified') else "❌ احراز نشده"
     
     keyboard = create_main_menu(user_id)
     
@@ -1915,7 +1704,6 @@ async def start_handler(client, message: Message):
 📊 **وضعیت حساب شما:**
 ├─ 👤 کاربر: {message.from_user.first_name or "ناشناس"}
 ├─ 🔋 وضعیت: {status}
-├─ 🔐 وضعیت احراز: {verified_status}
 ├─ 💰 سکه: {credits} عدد
 └─ ⏰ مصرف 1 سکه در ساعت
 
@@ -2209,8 +1997,7 @@ async def handle_all_messages(client, message: Message):
                 "status": "active",
                 "created_at": time.time(),
                 "last_active": time.time(),
-                "verified": db.get("users", user_id, {}).get("verified", False)
-            }
+                }
             db.set("users", user_id, user_info)
             db.delete("temp_data", user_id)
             
@@ -2255,46 +2042,7 @@ async def handle_all_messages(client, message: Message):
 async def handle_card_photo(client, message: Message):
     user_id = message.from_user.id
     
-    if db.get("temp_data", f"waiting_card_photo_{user_id}"):
-        verification_data = {
-            "user_id": user_id,
-            "first_name": message.from_user.first_name or "",
-            "username": message.from_user.username or "",
-            "photo_id": message.photo.file_id,
-            "timestamp": time.time(),
-            "status": "pending"
-        }
-        
-        db.set("verifications", user_id, verification_data)
-        db.delete("temp_data", f"waiting_card_photo_{user_id}")
-        
-        admin_text = f"🆕 **درخواست احراز هویت جدید**\n\n"
-        admin_text += f"👤 **کاربر:** {verification_data['first_name']}\n"
-        admin_text += f"🆔 **آیدی:** `{user_id}`\n"
-        admin_text += f"📧 **یوزرنیم:** @{verification_data['username']}\n"
-        admin_text += f"⏰ **زمان:** {time.ctime()}"
-        
-        keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("✅ تایید", callback_data=f"verify_approve_{user_id}"),
-                InlineKeyboardButton("❌ رد", callback_data=f"verify_reject_{user_id}")
-            ]
-        ])
-        
-        try:
-            await message.forward(ADMIN_ID)
-            await bot.send_message(ADMIN_ID, admin_text, reply_markup=keyboard)
-            
-            await message.reply_text(
-                "✅ **عکس شما دریافت شد و برای تایید به ادمین ارسال شد**\n\n"
-                "⏳ لطفا منتظر تایید ادمین باشید\n"
-                "🔔 پس از تایید به شما اطلاع داده خواهد شد",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 بازگشت", callback_data="back")]])
-            )
-        except Exception as e:
-            await message.reply_text("❌ خطا در ارسال به ادمین. لطفا بعدا تلاش کنید.")
-    
-    elif db.get("temp_data", f"waiting_payment_proof_{user_id}"):
+    if db.get("temp_data", f"waiting_payment_proof_{user_id}"):
         payment_data = db.get("payments", user_id)
         if not payment_data:
             await message.reply_text("❌ اطلاعات پرداخت یافت نشد. لطفا دوباره تلاش کنید.")
@@ -2336,57 +2084,6 @@ async def handle_card_photo(client, message: Message):
             
         except Exception as e:
             await message.reply_text("❌ خطا در ارسال به ادمین. لطفا بعدا تلاش کنید.")
-@bot.on_callback_query(filters.regex("increase_balance"))
-async def increase_balance_handler(client, callback_query):
-    user_id = callback_query.from_user.id
-    ok, not_joined = await check_force_join(client, user_id)
-    if not ok:
-        buttons = []
-        for ch in not_joined:
-            buttons.append([InlineKeyboardButton(f"📢 عضویت در @{ch}", url=f"https://t.me/{ch}")])
-        buttons.append([InlineKeyboardButton("🔄 بررسی عضویت", callback_data="check_join")])
-        
-        await callback_query.message.edit_text(
-            "❌ برای استفاده از ربات باید در تمام کانال‌های زیر عضو شوید:",
-            reply_markup=InlineKeyboardMarkup(buttons)
-        )
-        return
-    
-    user_data = db.get("users", user_id, {})
-    if user_data.get('rejected'):
-        await callback_query.answer("❌ حساب شما توسط ادمین رد شده است. امکان افزایش موجودی ندارید.", show_alert=True)
-        return
-    if not user_data.get('verified'):
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("● احراز هویت ●", callback_data="start_verification")],
-            [InlineKeyboardButton("🔙 بازگشت", callback_data="back")]
-        ])
-        
-        await callback_query.message.edit_text(
-            "🔒 **برای افزایش موجودی نیاز به احراز هویت دارید**\n\n"
-            "📋 **مراحل احراز هویت:**\n"
-            "1️⃣ کلیک روی دکمه 'احراز هویت'\n"
-            "2️⃣ ارسال عکس از کارت بانکی\n"
-            "3️⃣ تایید توسط ادمین\n"
-            "4️⃣ افزایش موجودی\n\n"
-            "⚠️ **توجه:** اطلاعات حساس (CVV2، تاریخ انقضا) در عکس پوشیده شود",
-            reply_markup=keyboard
-        )
-        return
-    else:
-        await callback_query.message.edit_text(
-            "💰 **افزایش موجودی**\n\n"
-            f"💎 **نرخ تبدیل:** هر {COIN_RATE} سکه = 50,000 تومان\n"
-            f"💵 **قیمت هر سکه:** {TOMAN_PER_COIN:.0f} تومان\n\n"
-            "🔢 **تعداد سکه مورد نظر خود را وارد کنید:**\n"
-            "مثال: 1440\n\n"
-            "💡 **توجه:** فقط عدد وارد کنید (بدون نقطه یا کاما)",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 بازگشت", callback_data="back")]])
-        )
-        
-        db.delete("temp_data", f"waiting_coins_{user_id}")
-        db.set("temp_data", f"waiting_coins_{user_id}", True)
-        await callback_query.answer("✅ لطفا تعداد سکه مورد نظر را وارد کنید")
 def main():
     print("● ربات سلف ساز روشن شد ●")
     try: 
