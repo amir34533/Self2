@@ -1207,7 +1207,18 @@ async def admin_panel(client, message: Message):
     
     await message.reply_text(stats_text, reply_markup=keyboard)
 def create_main_menu(user_id):
-    """منوی اصلی با چیدمان ۶ ردیفی مطابق تصویر Self Francis."""
+    """منوی اصلی دقیقاً با چیدمان ۶ ردیفی تصویر مرجع.
+
+    ۱) یک دکمه تمام‌عرض
+    ۲) دو دکمه هم‌اندازه کنار هم
+    ۳) یک دکمه تمام‌عرض
+    ۴) دو دکمه هم‌اندازه کنار هم
+    ۵) یک دکمه تمام‌عرض
+    ۶) یک دکمه تمام‌عرض
+
+    در تلگرام عرض InlineKeyboardButton توسط عرض حباب پیام تعیین می‌شود؛
+    برای کشیده شدن دکمه‌ها، متن پیام اصلی با MENU_WIDTH_PAD پهن می‌شود.
+    """
     return InlineKeyboardMarkup([
         # بخش ۱: یک دکمه کشیده
         [InlineKeyboardButton(
@@ -1666,7 +1677,13 @@ async def callback_handler(client, callback_query):
             
             keyboard = create_main_menu(user_id)
             
-            text = f"🤖 **ربات مدیریت سلف بات**\n\n**وضعیت:** {status_text}{phone_text}\n**💰 سکه ها:** `{credits}` سکه\n**⏰ مصرف:** 1 سکه در ساعت"
+            text = (
+                f"🤖 **ربات مدیریت سلف بات**\n\n"
+                f"**وضعیت:** {status_text}{phone_text}\n"
+                f"**💰 سکه ها:** `{credits}` سکه\n"
+                f"**⏰ مصرف:** 1 سکه در ساعت\n"
+                f"{MENU_WIDTH_PAD}"
+            )
             
             await callback_query.message.edit_text(text, reply_markup=keyboard)
         else:
@@ -1763,7 +1780,8 @@ async def start_handler(client, message: Message):
 
 {f"📱 **شماره:** `{phone}`" if phone else "⚠️ **شماره ثبت نشده**"}
 
-💡 برای شروع روی «فعالسازی» کلیک کنید."""
+💡 برای شروع روی «فعالسازی» کلیک کنید.
+{MENU_WIDTH_PAD}"""
 
     await message.reply_text(welcome_text, reply_markup=keyboard)
 @bot.on_callback_query(filters.regex(r'^joinbet_(-?\d+)_(-?\d+)$'))
