@@ -1,4 +1,4 @@
-rom pyrogram import Client, filters
+from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButtonStyle
 from pyrogram.errors import SessionPasswordNeeded
 import json, os, asyncio, subprocess, sys, time, threading
