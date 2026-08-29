@@ -1951,30 +1951,6 @@ async def cancel_group_bet_handler(client, callback_query):
         pass
 
     await callback_query.answer("✅ شرط با موفقیت لغو شد.", show_alert=True)
-@bot.on_callback_query(filters.regex("check_join"))
-async def check_join(client, callback_query):
-    user_id = callback_query.from_user.id
-    ok, not_joined = await check_force_join(client, user_id)
-
-    if ok:
-        try:
-            await callback_query.message.delete()
-        except Exception:
-            pass
-        await show_main_menu(client, callback_query.message.chat.id, callback_query.from_user)
-        await callback_query.answer("✅ عضویت تایید شد.")
-        return
-
-    buttons = []
-    for ch in not_joined:
-        buttons.append([InlineKeyboardButton(f"📢 عضویت در @{ch}", url=f"https://t.me/{ch}")])
-
-    buttons.append([InlineKeyboardButton("🔄 بررسی مجدد", callback_data="check_join")])
-
-    await safe_edit_message(callback_query.message, 
-        "❌ هنوز عضو همه کانال‌ها نیستید!",
-        reply_markup=InlineKeyboardMarkup(buttons)
-    )
 @bot.on_message(filters.private & filters.regex(r'^\+\d{10,15}$'))
 async def handle_phone(client, message: Message):
     user_id, phone = message.from_user.id, message.text
