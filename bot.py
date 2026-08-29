@@ -7,7 +7,7 @@ from pyrogram import enums
 
 user_temp_codes = {}
 active_clients = {}
-BOT_TOKEN = "8674957786:AAHcKmPkUhR630w5pmkrifnxO9Yf8SCuVm"
+BOT_TOKEN = "8828778258:AAGWMrhAEgJ1k4tIP9tJmWxjviAaJQ4_tmo"
 API_ID = 35656061
 API_HASH = "b37f2596516bc0439bf505d1d230395c"
 ADMIN_ID = 7845464086
