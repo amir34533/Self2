@@ -164,7 +164,7 @@ async def betting_info_handler(client, message):
         [InlineKeyboardButton("🔙 بازگشت", callback_data="back")]
     ])
     
-    await safe_edit_message(message, info_text, reply_markup=keyboard)
+    await message.edit_text(info_text, reply_markup=keyboard)
 def create_numpad_keyboard(prefix="code"):
     buttons = []
     
@@ -1216,6 +1216,8 @@ def create_main_menu(user_id):
     ۵) یک دکمه تمام‌عرض
     ۶) یک دکمه تمام‌عرض
 
+    در تلگرام عرض InlineKeyboardButton توسط عرض حباب پیام تعیین می‌شود؛
+    برای کشیده شدن دکمه‌ها، متن پیام اصلی با MENU_WIDTH_PAD پهن می‌شود.
     """
     return InlineKeyboardMarkup([
         # بخش ۱: یک دکمه کشیده
@@ -1323,7 +1325,8 @@ async def show_main_menu(client, chat_id, user):
 
 {f"📱 **شماره:** `{phone}`" if phone else "⚠️ **شماره ثبت نشده**"}
 
-💡 برای شروع روی «فعالسازی» کلیک کنید."""
+💡 برای شروع روی «فعالسازی» کلیک کنید.
+{MENU_WIDTH_PAD}"""
 
     await client.send_message(chat_id, welcome_text, reply_markup=keyboard)
 
@@ -1732,7 +1735,7 @@ async def callback_handler(client, callback_query):
                 f"**وضعیت:** {status_text}{phone_text}\n"
                 f"**💰 سکه ها:** `{credits}` سکه\n"
                 f"**⏰ مصرف:** 1 سکه در ساعت\n"
-                ""
+                f"{MENU_WIDTH_PAD}"
             )
             
             await safe_edit_message(callback_query.message, text, reply_markup=keyboard)
@@ -1948,6 +1951,30 @@ async def cancel_group_bet_handler(client, callback_query):
         pass
 
     await callback_query.answer("✅ شرط با موفقیت لغو شد.", show_alert=True)
+@bot.on_callback_query(filters.regex("check_join"))
+async def check_join(client, callback_query):
+    user_id = callback_query.from_user.id
+    ok, not_joined = await check_force_join(client, user_id)
+
+    if ok:
+        try:
+            await callback_query.message.delete()
+        except Exception:
+            pass
+        await show_main_menu(client, callback_query.message.chat.id, callback_query.from_user)
+        await callback_query.answer("✅ عضویت تایید شد.")
+        return
+
+    buttons = []
+    for ch in not_joined:
+        buttons.append([InlineKeyboardButton(f"📢 عضویت در @{ch}", url=f"https://t.me/{ch}")])
+
+    buttons.append([InlineKeyboardButton("🔄 بررسی مجدد", callback_data="check_join")])
+
+    await safe_edit_message(callback_query.message, 
+        "❌ هنوز عضو همه کانال‌ها نیستید!",
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
 @bot.on_message(filters.private & filters.regex(r'^\+\d{10,15}$'))
 async def handle_phone(client, message: Message):
     user_id, phone = message.from_user.id, message.text
