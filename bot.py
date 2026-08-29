@@ -7,23 +7,24 @@ from pyrogram import enums
 
 user_temp_codes = {}
 active_clients = {}
-BOT_TOKEN = "8828778258:AAGWMrhAEgJ1k4tIP9tJmWxjviAaJQ4_tmo"
-API_ID = 35656061
-API_HASH = "b37f2596516bc0439bf505d1d230395c"
-ADMIN_ID = 7845464086
+BOT_TOKEN = "00000"
+API_ID = 00000
+API_HASH = "00000"
+ADMIN_ID = 000000
 
 # تنظیمات منوی جدید
 # یوزرنیم‌ها را بدون @ وارد کنید
-SUPPORT_USERNAME = "Aliconfigs"
-BUY_CHANNEL_USERNAME = "SelfPersiangulf"
+SUPPORT_USERNAME = "YourSupportUsername"
+BUY_CHANNEL_USERNAME = "YourChannelUsername"
 HELPER_BOT_USERNAME = "Helpselfbotvippersian_bot"
 
 os.makedirs("sessions", exist_ok=True)
 
 # لیست کانال ها کم یا زیاد میتونید کنید بدون @
 FORCE_CHANNELS = [
-    "SH0PAL1",
- 
+    "00000",
+    "00000",
+    "00000"
 ]
 
 
@@ -1207,24 +1208,50 @@ async def admin_panel(client, message: Message):
     
     await message.reply_text(stats_text, reply_markup=keyboard)
 def create_main_menu(user_id):
-    """منوی اصلی رنگی با چیدمان مشابه تصویر Self Francis."""
+    """منوی اصلی با چیدمان دقیق نمونه Self Francis."""
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🛒 خرید سلف", callback_data="increase_balance",
-                              style=KeyboardButtonStyle(bg_success=True))],
-        [InlineKeyboardButton("👤 حساب کاربری", callback_data="status_credits",
-                              style=KeyboardButtonStyle(bg_primary=True)),
-         InlineKeyboardButton("👥 زیرمجموعه", callback_data="referral",
-                              style=KeyboardButtonStyle(bg_success=True))],
-        [InlineKeyboardButton("⚙️ مدیریت بات ⚙️", callback_data="self_management",
-                              style=KeyboardButtonStyle(bg_primary=True))],
-        [InlineKeyboardButton("• راهنمای خرید •", callback_data="buy_guide",
-                              style=KeyboardButtonStyle(bg_primary=True))],
-        [InlineKeyboardButton("👨‍💻 پشتیبانی 👨‍💻", callback_data="support",
-                              style=KeyboardButtonStyle(bg_success=True))],
-        [InlineKeyboardButton("📣 چنل ما 📣", callback_data="buy_channel",
-                              style=KeyboardButtonStyle(bg_primary=True))],
-        [InlineKeyboardButton("🛑 خاموش کردن سلف 🛑", callback_data="stop_self",
-                              style=KeyboardButtonStyle(bg_danger=True))]
+        # ردیف ۱: یک دکمه کامل
+        [InlineKeyboardButton(
+            "🛒 خرید سلف",
+            callback_data="increase_balance",
+            style=KeyboardButtonStyle(bg_success=True)
+        )],
+
+        # ردیف ۲: دو دکمه کنار هم
+        [
+            InlineKeyboardButton(
+                "👤 حساب کاربری",
+                callback_data="status_credits",
+                style=KeyboardButtonStyle(bg_primary=True)
+            ),
+            InlineKeyboardButton(
+                "👥 زیرمجموعه",
+                callback_data="referral",
+                style=KeyboardButtonStyle(bg_success=True)
+            )
+        ],
+
+        # ردیف‌های بعدی: هر کدام یک دکمه کامل
+        [InlineKeyboardButton(
+            "⚙️ مدیریت بات ⚙️",
+            callback_data="self_management",
+            style=KeyboardButtonStyle(bg_primary=True)
+        )],
+        [InlineKeyboardButton(
+            "• راهنمای خرید •",
+            callback_data="buy_guide",
+            style=KeyboardButtonStyle(bg_primary=True)
+        )],
+        [InlineKeyboardButton(
+            "👨‍💻 پشتیبانی 👨‍💻",
+            callback_data="support",
+            style=KeyboardButtonStyle(bg_success=True)
+        )],
+        [InlineKeyboardButton(
+            "📣 چنل ما 📣",
+            callback_data="buy_channel",
+            style=KeyboardButtonStyle(bg_primary=True)
+        )]
     ])
 
 
@@ -1425,14 +1452,30 @@ async def callback_handler(client, callback_query):
         
         keyboard = InlineKeyboardMarkup([
             [
-                InlineKeyboardButton("▶️ روشن کردن سلف", callback_data="self_start"),
-                InlineKeyboardButton("⏹ خاموش کردن سلف", callback_data="self_stop")
+                InlineKeyboardButton(
+                    "▶️ روشن کردن سلف",
+                    callback_data="self_start",
+                    style=KeyboardButtonStyle(bg_success=True)
+                ),
+                InlineKeyboardButton(
+                    "⏹ خاموش کردن سلف",
+                    callback_data="self_stop",
+                    style=KeyboardButtonStyle(bg_danger=True)
+                )
             ],
             [
-                InlineKeyboardButton("🔄 آپدیت سلف", callback_data="self_update")
+                InlineKeyboardButton(
+                    "🔄 آپدیت سلف",
+                    callback_data="self_update",
+                    style=KeyboardButtonStyle(bg_primary=True)
+                )
             ],
             [
-                InlineKeyboardButton("🔙 بازگشت", callback_data="back")
+                InlineKeyboardButton(
+                    "🔙 بازگشت",
+                    callback_data="back",
+                    style=KeyboardButtonStyle(bg_primary=True)
+                )
             ]
         ])
         
