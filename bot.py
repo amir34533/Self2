@@ -1277,6 +1277,59 @@ def create_main_menu(user_id):
         )]
     ])
 
+async def show_main_menu(client, chat_id, user):
+    """نمایش منوی اصلی پس از /start یا تایید عضویت اجباری."""
+    user_id = user.id
+
+    existing_user = db.get("users", user_id)
+    is_new_user = False
+
+    if not existing_user:
+        user_info = {
+            "status": "inactive",
+            "created_at": time.time(),
+            "first_name": user.first_name or "",
+            "username": user.username or ""
+        }
+        db.set("users", user_id, user_info)
+        is_new_user = True
+    else:
+        user_info = existing_user
+        user_info["first_name"] = user.first_name or ""
+        user_info["username"] = user.username or ""
+        db.set("users", user_id, user_info)
+
+    credits = db.get("credits", user_id, 0)
+    if is_new_user and credits == 0:
+        db.set("credits", user_id, 5)
+        credits = 5
+
+    if user_id == ADMIN_ID:
+        await client.send_message(chat_id, "🔐 پنل مدیریت ادمین فعال است.")
+        return
+
+    user_data = db.get("users", user_id, {})
+    status = "🟢 فعال" if user_data.get('status') == 'active' else "🔴 غیرفعال"
+    phone = user_data.get('phone', '')
+    keyboard = create_main_menu(user_id)
+
+    welcome_text = f"""**🌺 به ربات سلف ساز خوش آمدید!**
+
+🤖 **ربات مدیریت سلف بات حرفه‌ای**
+├─ ساخت سلف شخصی
+📊 **وضعیت حساب شما:**
+├─ 👤 کاربر: {user.first_name or "ناشناس"}
+├─ 🔋 وضعیت: {status}
+├─ 💰 سکه: {credits} عدد
+└─ ⏰ مصرف 1 سکه در ساعت
+
+{f"📱 **شماره:** `{phone}`" if phone else "⚠️ **شماره ثبت نشده**"}
+
+💡 برای شروع روی «فعالسازی» کلیک کنید.
+{MENU_WIDTH_PAD}"""
+
+    await client.send_message(chat_id, welcome_text, reply_markup=keyboard)
+
 @bot.on_callback_query()
 async def callback_handler(client, callback_query):
     user_id = callback_query.from_user.id
@@ -1693,7 +1746,12 @@ async def callback_handler(client, callback_query):
     elif data == "check_join":
         ok, not_joined = await check_force_join(client, user_id)
         if ok:
-            await safe_edit_message(callback_query.message, "✅ عضویت شما در همه کانال‌ها تایید شد!\nدوباره /start بزنید.")
+            try:
+                await callback_query.message.delete()
+            except Exception:
+                pass
+            await show_main_menu(client, callback_query.message.chat.id, callback_query.from_user)
+            await callback_query.answer("✅ عضویت تایید شد.")
             return
         buttons = []
         for ch in not_joined:
@@ -1733,57 +1791,11 @@ async def start_handler(client, message: Message):
         )
         return
 
-    user_id = message.from_user.id
-    
-    existing_user = db.get("users", user_id)
-    is_new_user = False
-    
-    if not existing_user:
-        user_info = {
-            "status": "inactive",
-            "created_at": time.time(),
-            "first_name": message.from_user.first_name or "",
-            "username": message.from_user.username or ""
-        }
-        db.set("users", user_id, user_info)
-        is_new_user = True
-    else:
-        user_info = existing_user
-        user_info["first_name"] = message.from_user.first_name or ""
-        user_info["username"] = message.from_user.username or ""
-        db.set("users", user_id, user_info)
-    
-    credits = db.get("credits", user_id, 0)
-    if is_new_user and credits == 0:
-        db.set("credits", user_id, 5)
-        credits = 5
-    
-    if user_id == ADMIN_ID:
+    if message.from_user.id == ADMIN_ID:
         await admin_panel(client, message)
         return
-    
-    user_data = db.get("users", user_id, {})
-    status = "🟢 فعال" if user_data.get('status') == 'active' else "🔴 غیرفعال"
-    phone = user_data.get('phone', '')
-    
-    keyboard = create_main_menu(user_id)
-    
-    welcome_text = f"""**🌺 به ربات سلف ساز خوش آمدید!**
 
-🤖 **ربات مدیریت سلف بات حرفه‌ای**
-├─ ساخت سلف شخصی
-📊 **وضعیت حساب شما:**
-├─ 👤 کاربر: {message.from_user.first_name or "ناشناس"}
-├─ 🔋 وضعیت: {status}
-├─ 💰 سکه: {credits} عدد
-└─ ⏰ مصرف 1 سکه در ساعت
-
-{f"📱 **شماره:** `{phone}`" if phone else "⚠️ **شماره ثبت نشده**"}
-
-💡 برای شروع روی «فعالسازی» کلیک کنید.
-{MENU_WIDTH_PAD}"""
-
-    await message.reply_text(welcome_text, reply_markup=keyboard)
+    await show_main_menu(client, message.chat.id, message.from_user)
 @bot.on_callback_query(filters.regex(r'^joinbet_(-?\d+)_(-?\d+)$'))
 async def join_group_bet_handler(client, callback_query):
     user_id = callback_query.from_user.id
@@ -1945,7 +1957,12 @@ async def check_join(client, callback_query):
     ok, not_joined = await check_force_join(client, user_id)
 
     if ok:
-        await safe_edit_message(callback_query.message, "✅ عضویت شما در همه کانال‌ها تایید شد!\nدوباره /start بزنید.")
+        try:
+            await callback_query.message.delete()
+        except Exception:
+            pass
+        await show_main_menu(client, callback_query.message.chat.id, callback_query.from_user)
+        await callback_query.answer("✅ عضویت تایید شد.")
         return
 
     buttons = []
