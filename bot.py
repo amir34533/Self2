@@ -164,7 +164,7 @@ async def betting_info_handler(client, message):
         [InlineKeyboardButton("🔙 بازگشت", callback_data="back")]
     ])
     
-    await message.edit_text(info_text, reply_markup=keyboard)
+    await safe_edit_message(message, info_text, reply_markup=keyboard)
 def create_numpad_keyboard(prefix="code"):
     buttons = []
     
@@ -1216,8 +1216,6 @@ def create_main_menu(user_id):
     ۵) یک دکمه تمام‌عرض
     ۶) یک دکمه تمام‌عرض
 
-    در تلگرام عرض InlineKeyboardButton توسط عرض حباب پیام تعیین می‌شود؛
-    برای کشیده شدن دکمه‌ها، متن پیام اصلی با MENU_WIDTH_PAD پهن می‌شود.
     """
     return InlineKeyboardMarkup([
         # بخش ۱: یک دکمه کشیده
@@ -1325,8 +1323,7 @@ async def show_main_menu(client, chat_id, user):
 
 {f"📱 **شماره:** `{phone}`" if phone else "⚠️ **شماره ثبت نشده**"}
 
-💡 برای شروع روی «فعالسازی» کلیک کنید.
-{MENU_WIDTH_PAD}"""
+💡 برای شروع روی «فعالسازی» کلیک کنید."""
 
     await client.send_message(chat_id, welcome_text, reply_markup=keyboard)
 
@@ -1735,7 +1732,7 @@ async def callback_handler(client, callback_query):
                 f"**وضعیت:** {status_text}{phone_text}\n"
                 f"**💰 سکه ها:** `{credits}` سکه\n"
                 f"**⏰ مصرف:** 1 سکه در ساعت\n"
-                f"{MENU_WIDTH_PAD}"
+                ""
             )
             
             await safe_edit_message(callback_query.message, text, reply_markup=keyboard)
