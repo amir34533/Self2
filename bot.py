@@ -7,7 +7,7 @@ from pyrogram import enums
 
 user_temp_codes = {}
 active_clients = {}
-BOT_TOKEN = "8828778258:AAGWMrhAEgJ1k4tIP9tJmWxjviAaJQ4_tmo"
+BOT_TOKEN = "8674957786:AAHcKmPkUhR630w5pmkrifnxO9Yf8SCuVm"
 API_ID = 35656061
 API_HASH = "b37f2596516bc0439bf505d1d230395c"
 ADMIN_ID = 7845464086
@@ -1207,16 +1207,16 @@ async def admin_panel(client, message: Message):
     
     await message.reply_text(stats_text, reply_markup=keyboard)
 def create_main_menu(user_id):
-    """منوی اصلی با چیدمان دقیق نمونه Self Francis."""
+    """منوی اصلی با چیدمان ۶ ردیفی مطابق تصویر Self Francis."""
     return InlineKeyboardMarkup([
-        # ردیف ۱: یک دکمه کامل
+        # بخش ۱: یک دکمه کشیده
         [InlineKeyboardButton(
             "🛒 خرید سلف",
             callback_data="increase_balance",
             style=KeyboardButtonStyle(bg_success=True)
         )],
 
-        # ردیف ۲: دو دکمه کنار هم
+        # بخش ۲: دو دکمه کنار هم
         [
             InlineKeyboardButton(
                 "👤 حساب کاربری",
@@ -1230,29 +1230,41 @@ def create_main_menu(user_id):
             )
         ],
 
-        # ردیف‌های بعدی: هر کدام یک دکمه کامل
+        # بخش ۳: یک دکمه کشیده
         [InlineKeyboardButton(
             "⚙️ مدیریت بات ⚙️",
             callback_data="self_management",
             style=KeyboardButtonStyle(bg_primary=True)
         )],
-        [InlineKeyboardButton(
-            "• راهنمای خرید •",
-            callback_data="buy_guide",
-            style=KeyboardButtonStyle(bg_primary=True)
-        )],
+
+        # بخش ۴: دو دکمه کنار هم
+        [
+            InlineKeyboardButton(
+                "• راهنمای خرید •",
+                callback_data="buy_guide",
+                style=KeyboardButtonStyle(bg_primary=True)
+            ),
+            InlineKeyboardButton(
+                "• خرید الماس •",
+                callback_data="increase_balance",
+                style=KeyboardButtonStyle(bg_success=True)
+            )
+        ],
+
+        # بخش ۵: یک دکمه کشیده
         [InlineKeyboardButton(
             "👨‍💻 پشتیبانی 👨‍💻",
             callback_data="support",
             style=KeyboardButtonStyle(bg_success=True)
         )],
+
+        # بخش ۶: یک دکمه کشیده
         [InlineKeyboardButton(
             "📣 چنل ما 📣",
             callback_data="buy_channel",
             style=KeyboardButtonStyle(bg_primary=True)
         )]
     ])
-
 
 @bot.on_callback_query()
 async def callback_handler(client, callback_query):
